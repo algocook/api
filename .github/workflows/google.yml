@@ -41,9 +41,10 @@ jobs:
             
             ## ${{ github.repository }}
             
-            🍏🍏🍏:
+            🍏🍏🍏
 
   setup-build-publish-deploy:
+    needs: [starting-deploy]
     name: Setup, Build, Publish, and Deploy
     runs-on: ubuntu-latest
 
