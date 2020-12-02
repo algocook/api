@@ -130,7 +130,6 @@ jobs:
           echo "::set-output name=conclusion::$conclusion"
 
       - name: Telegram info end deployment
-        if: ${{ steps.job1_result.outputs.status != 'completed' || steps.job1_result.outputs.conclusion != 'success' }}
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_TO }}
