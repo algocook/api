@@ -6,7 +6,7 @@ import (
     "os"
 )
 func handler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintf(w, "Hello %s!", r.URL.Path[1:])
+    fmt.Fprintf(w, "Hello pidor %s!", r.URL.Path[1:])
     fmt.Println("RESTfulServ. on:5000, Controller:",r.URL.Path[1:])
 }
 func main() {
