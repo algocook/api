@@ -3,7 +3,6 @@ kind: Service
 metadata:
   name: gke-test-service
 spec:
-  type: LoadBalancer
   ports:
     - port: 80
       targetPort: 5000
