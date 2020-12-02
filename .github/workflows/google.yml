@@ -23,6 +23,8 @@ env:
   GKE_ZONE: europe-north1-a
   DEPLOYMENT_NAME: api-deployment
   IMAGE: api-image
+  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+  TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
 
 jobs:
   starting-deploy:
@@ -30,13 +32,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |-
-          echo ${{ secrets.TELEGRAM_TOKEN }}
+          echo TELEGRAM_TOKEN
       
       - name: Telegram info started
         uses: appleboy/telegram-action@master
         with:
-          to: ${{ secrets.TELEGRAM_TO }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: TELEGRAM_TO
+          token: TELEGRAM_TOKEN
           message: |
             🍏🍏🍏
             
@@ -133,8 +135,8 @@ jobs:
         if: ${{ steps.job1_result.outputs.status != 'completed' || steps.job1_result.outputs.conclusion != 'success' }}
         uses: appleboy/telegram-action@master
         with:
-          to: ${{ secrets.TELEGRAM_TO }}
-          token: ${{ secrets.TELEGRAM_TOKEN }}
+          to: TELEGRAM_TO
+          token: TELEGRAM_TOKEN
           message: |
             🍎🍎🍎
             
