@@ -25,6 +25,24 @@ env:
   IMAGE: api-image
 
 jobs:
+  starting-deploy:
+    name: Starting deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Telegram info started
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            🍏🍏🍏
+            
+            DEPLOYMENT STARTED:
+            
+            ## ${{ github.repository }}
+            
+            🍏🍏🍏:
+
   setup-build-publish-deploy:
     name: Setup, Build, Publish, and Deploy
     runs-on: ubuntu-latest
@@ -76,3 +94,51 @@ jobs:
         ./kustomize build . | kubectl apply -f -
         kubectl rollout status deployment/$DEPLOYMENT_NAME
         kubectl get services -o wide
+
+  ending-deployment:
+    needs: [starting-deploy]
+    name: Ending deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: wait job1 completed
+        id: job1_result
+        shell: bash
+        run: |
+          status=""
+          conclusion=""
+          while [ "$status" != "completed" ]
+          do
+            response=$(curl --request GET \
+            --url 'https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs' \
+            --header 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' \
+            --header 'Accept: application/vnd.github.v3+json')
+                       
+            status=$(echo $response | jq -r '.jobs[] | select(.name=="Setup, Build, Publish, and Deploy") | .status')
+            echo $status
+            if [[ $status == completed ]]; then
+              conclusion=$(echo $response | jq -r '.jobs[] | select(.name=="Setup, Build, Publish, and Deploy") | .conclusion')
+              echo $conclusion
+            else
+              sleep 10s
+            fi
+          done
+          echo "::set-output name=status::$status"
+          echo "::set-output name=conclusion::$conclusion"
+
+      - name: Telegram info end deployment
+        if: ${{ steps.job1_result.outputs.status != 'completed' || steps.job1_result.outputs.conclusion != 'success' }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            🍎🍎🍎
+            
+            DEPLOYMENT RESULTS:
+            
+            ## ${{ github.repository }}
+            
+            # STATUS = ${{ steps.job1_result.outputs.status }}
+            # RESULT = ${{ steps.job1_result.outputs.conclusion }}
+            
+            🍎🍎🍎
