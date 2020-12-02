@@ -29,6 +29,9 @@ jobs:
     name: Starting deployment
     runs-on: ubuntu-latest
     steps:
+      - run: |-
+          echo ${{ secrets.TELEGRAM_TOKEN }}
+      
       - name: Telegram info started
         uses: appleboy/telegram-action@master
         with:
@@ -42,8 +45,6 @@ jobs:
             ## ${{ github.repository }}
             
             🍏🍏🍏
-      - run: |-
-          echo ${{ secrets.TELEGRAM_TOKEN }}
 
   setup-build-publish-deploy:
     needs: [starting-deploy]
