@@ -21,8 +21,8 @@ env:
   PROJECT_ID: ${{ secrets.GKE_PROJECT }}
   GKE_CLUSTER: production-1
   GKE_ZONE: europe-north1-a
-  DEPLOYMENT_NAME: api
-  IMAGE: api
+  DEPLOYMENT_NAME: api-deployment
+  IMAGE: api-image
 
 jobs:
   setup-build-publish-deploy:
