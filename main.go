@@ -1,85 +1,73 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"math/rand"
 	"net/http"
 	"strconv"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
+
+	pb "github.com/algocook/proto"
 	"github.com/gorilla/mux"
 )
 
-// Post struct
-type Post struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-	Body  string `json:"body"`
+// UsersClient comment
+type UsersClient struct {
+	conn *grpc.ClientConn
 }
 
-var posts []Post
+var usersClient UsersClient
 
-func getPosts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(posts)
+// User struct
+type User struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Title    string `json:"title"`
 }
 
-func createPost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var post Post
-	_ = json.NewDecoder(r.Body).Decode(&post)
-	post.ID = strconv.Itoa(rand.Intn(1000000))
-	posts = append(posts, post)
-	json.NewEncoder(w).Encode(&post)
+// GetUser function
+func (client *UsersClient) GetUser(id int64) User {
+	cli := pb.NewUsersClient(client.conn)
+	var request pb.GetUserRequest
+	request.Id = id
+	response, err := cli.GetUser(context.Background(), &request)
+
+	if err != nil {
+		grpclog.Fatalf("fail to dial: %v", err)
+	}
+
+	return User{
+		ID:       response.Id,
+		Username: response.Username,
+		Title:    response.Title,
+	}
 }
 
-func getPost(w http.ResponseWriter, r *http.Request) {
+func getUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
-	for _, item := range posts {
-		if item.ID == params["id"] {
-			json.NewEncoder(w).Encode(item)
-			return
-		}
-	}
-	json.NewEncoder(w).Encode(&Post{})
-}
+	id, _ := strconv.ParseInt(params["id"], 0, 64)
 
-func updatePost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-	for index, item := range posts {
-		if item.ID == params["id"] {
-			posts = append(posts[:index], posts[index+1:]...)
-			var post Post
-			_ = json.NewDecoder(r.Body).Decode(&post)
-			post.ID = params["id"]
-			posts = append(posts, post)
-			json.NewEncoder(w).Encode(&post)
-			return
-		}
-	}
-	json.NewEncoder(w).Encode(posts)
-}
+	user := usersClient.GetUser(id)
 
-func deletePost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-	for index, item := range posts {
-		if item.ID == params["id"] {
-			posts = append(posts[:index], posts[index+1:]...)
-			break
-		}
-	}
-	json.NewEncoder(w).Encode(posts)
+	json.NewEncoder(w).Encode(user)
 }
 
 func main() {
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+	}
+	//args := os.Args
+	con, err := grpc.Dial("users:5300", opts...)
+
+	if err != nil {
+		grpclog.Fatalf("fail to dial: %v", err)
+	}
+	usersClient.conn = con
+
 	router := mux.NewRouter()
-	posts = append(posts, Post{ID: "1", Title: "My first post", Body: "This is the content of my first post"})
-	router.HandleFunc("/posts", getPosts).Methods("GET")
-	router.HandleFunc("/posts", createPost).Methods("POST")
-	router.HandleFunc("/posts/{id}", getPost).Methods("GET")
-	router.HandleFunc("/posts/{id}", updatePost).Methods("PUT")
-	router.HandleFunc("/posts/{id}", deletePost).Methods("DELETE")
-	http.ListenAndServe(":5000", router)
+	router.HandleFunc("/user/{id}", getUser).Methods("GET")
+	http.ListenAndServe(":80", router)
 }
