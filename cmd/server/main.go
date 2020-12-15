@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	//users "github.com/algocook/proto/users"
-	users "algocook/proto/users"
-
+	users "github.com/algocook/proto/users"
 	"github.com/gorilla/mux"
 )
 
