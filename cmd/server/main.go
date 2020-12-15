@@ -1,73 +1,74 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
+	//users "github.com/algocook/proto/users"
+	users "algocook/proto/users"
 
-	pb "github.com/algocook/proto/users"
 	"github.com/gorilla/mux"
 )
-
-// UsersClient comment
-type UsersClient struct {
-	conn *grpc.ClientConn
-}
-
-var usersClient UsersClient
-
-// User struct
-type User struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
-	Title    string `json:"title"`
-}
-
-// GetUser function
-func (client *UsersClient) GetUser(id int64) User {
-	cli := pb.NewUsersClient(client.conn)
-	var request pb.GetUserRequest
-	request.Id = id
-	response, err := cli.GetUser(context.Background(), &request)
-
-	if err != nil {
-		grpclog.Fatalf("fail to dial: %v", err)
-	}
-
-	return User{
-		ID:       response.Id,
-		Username: response.Username,
-		Title:    response.Title,
-	}
-}
 
 func getUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(r)
 	id, _ := strconv.ParseInt(params["id"], 0, 64)
 
-	user := usersClient.GetUser(id)
+	client, err := users.NewClient()
+	if err != nil {
+		json.NewEncoder(w).Encode(users.User{
+			Error: err.Error(),
+		})
+		return
+	}
 
+	user := client.GetUser(id)
+	json.NewEncoder(w).Encode(user)
+}
+
+func getAvailability(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	username := params["username"]
+
+	client, err := users.NewClient()
+	if err != nil {
+		json.NewEncoder(w).Encode(users.IsAvailable{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	result := client.CheckUsername(username)
+	json.NewEncoder(w).Encode(result)
+}
+
+func postUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	decoder := json.NewDecoder(r.Body)
+	var user users.User
+	decoder.Decode(&user)
+	fmt.Print(user)
+
+	client, err := users.NewClient()
+	if err != nil {
+		json.NewEncoder(w).Encode(users.User{
+			Error: err.Error(),
+		})
+		return
+	}
+
+	user = client.PostUser(user.Username, user.Title, user.Description)
 	json.NewEncoder(w).Encode(user)
 }
 
 func main() {
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-	}
-	//args := os.Args
-	con, err := grpc.Dial("users:5300", opts...)
-
-	if err != nil {
-		grpclog.Fatalf("fail to dial: %v", err)
-	}
-	usersClient.conn = con
-
 	router := mux.NewRouter()
 	router.HandleFunc("/user/{id}", getUser).Methods("GET")
+	router.HandleFunc("/usernameavailable/{username}", getAvailability).Methods("GET")
+	router.HandleFunc("/user", postUser).Methods("POST")
 	http.ListenAndServe(":80", router)
 }
