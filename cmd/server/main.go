@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
 
-	pb "github.com/algocook/proto"
+	pb "github.com/algocook/proto/users"
 	"github.com/gorilla/mux"
 )
 
