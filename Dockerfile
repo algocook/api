@@ -1,12 +1,14 @@
 FROM golang:latest 
-RUN mkdir /app 
+
+WORKDIR /go/src/algocook/api
+
+ENV SRC_DIR=/go/src/algocook/api
+ADD . ${SRC_DIR}
 
 RUN go get -v -u github.com/gorilla/mux
-RUN go get -v -u github.com/algocook/proto
-RUN go get -v -u google.golang.org/grpc
+RUN go get -v -u github.com/algocook/proto/users
 RUN go get -v -u google.golang.org/grpc/grpclog
 
-ADD . /app/ 
-WORKDIR /app 
-RUN go build -o main . 
-CMD ["/app/main"]
+RUN cd ${SRC_DIR}
+RUN go build -o main ${SRC_DIR}/cmd/server
+CMD ["./main"]
