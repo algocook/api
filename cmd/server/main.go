@@ -1,72 +1,82 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
+	"net/http/httptest"
+	"net/http/httputil"
 
-	users "github.com/algocook/proto/users"
+	"api/pkg/methods/compilations"
+	"api/pkg/methods/recipes"
+	"api/pkg/methods/users"
+
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog/log"
 )
 
-func getUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-	id, _ := strconv.ParseInt(params["id"], 0, 64)
+func logHandler(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		x, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+			return
+		}
+		log.Debug().
+			Str("request", (fmt.Sprintf("%q", x))).
+			Msg(r.Method)
+		rec := httptest.NewRecorder()
+		fn(rec, r)
+		log.Debug().
+			Str("response", (fmt.Sprintf("%q", rec.Body))).
+			Msg(r.Method)
 
-	client, err := users.NewClient()
-	if err != nil {
-		json.NewEncoder(w).Encode(users.User{
-			Error: err.Error(),
-		})
-		return
+		// this copies the recorded response to the response writer
+		for k, v := range rec.HeaderMap {
+			w.Header()[k] = v
+		}
+		w.WriteHeader(rec.Code)
+		rec.Body.WriteTo(w)
 	}
-
-	user := client.GetUser(id)
-	json.NewEncoder(w).Encode(user)
-}
-
-func getAvailability(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	params := mux.Vars(r)
-	username := params["username"]
-
-	client, err := users.NewClient()
-	if err != nil {
-		json.NewEncoder(w).Encode(users.IsAvailable{
-			Error: err.Error(),
-		})
-		return
-	}
-
-	result := client.CheckUsername(username)
-	json.NewEncoder(w).Encode(result)
-}
-
-func postUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	decoder := json.NewDecoder(r.Body)
-	var user users.User
-	decoder.Decode(&user)
-	fmt.Print(user)
-
-	client, err := users.NewClient()
-	if err != nil {
-		json.NewEncoder(w).Encode(users.User{
-			Error: err.Error(),
-		})
-		return
-	}
-
-	user = client.PostUser(user.Username, user.Title, user.Description)
-	json.NewEncoder(w).Encode(user)
 }
 
 func main() {
+	router := EpicMux()
+
+	srv := &http.Server{
+		Handler: router,
+		Addr:    ":80",
+	}
+
+	log.Info().Msg("Starting server")
+	err := srv.ListenAndServe()
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	log.Info().Msg("Started server")
+}
+
+// EpicMux creating our router
+func EpicMux() http.Handler {
 	router := mux.NewRouter()
-	router.HandleFunc("/user/{id}", getUser).Methods("GET")
-	router.HandleFunc("/usernameavailable/{username}", getAvailability).Methods("GET")
-	router.HandleFunc("/user", postUser).Methods("POST")
-	http.ListenAndServe(":80", router)
+
+	// Users router
+	router.HandleFunc("/user/{id}", logHandler(users.GetOne)).Methods("GET")
+	router.HandleFunc("/usernameavailable/{username}", logHandler(users.GetUsernameAvailability)).Methods("GET")
+	router.HandleFunc("/user/post", logHandler(users.PostOne)).Methods("POST")
+	router.HandleFunc("/user/delete", logHandler(users.DeleteOne)).Methods("DELETE")
+	router.HandleFunc("/users/search", logHandler(users.Search)).Methods("GET")
+
+	// Recipes router
+	router.HandleFunc("/recipe/{id}", logHandler(recipes.GetOne)).Methods("GET")
+	router.HandleFunc("/recipe/post", logHandler(recipes.PostOne)).Methods("POST")
+	router.HandleFunc("/recipe/delete", logHandler(recipes.DeleteOne)).Methods("DELETE")
+	router.HandleFunc("/recipes/search", logHandler(recipes.Search)).Methods("GET")
+
+	// Compilations router
+	router.HandleFunc("/compilation/{id}", logHandler(compilations.GetOne)).Methods("GET")
+	router.HandleFunc("/compilation/post", logHandler(compilations.PostOne)).Methods("POST")
+	router.HandleFunc("/compilation/delete", logHandler(compilations.DeleteOne)).Methods("DELETE")
+	router.HandleFunc("/compilations/search", logHandler(compilations.Search)).Methods("GET")
+
+	return router
 }
