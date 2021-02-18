@@ -9,7 +9,7 @@ pipeline {
 
     stage('kuber') {
       steps {
-        sh 'kubectl apply -k .'
+        sh 'cd /root'
       }
     }
 
