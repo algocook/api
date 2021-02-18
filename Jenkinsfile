@@ -9,7 +9,7 @@ pipeline {
 
     stage('kuber') {
       steps {
-        sh 'kubernetes/cluster/kubectl.sh apply -k '
+        sh 'kubectl apply -k .'
       }
     }
 
