@@ -3,11 +3,11 @@ pipeline {
   stages {
     stage('build') {
       steps {
-        sh 'docker build'
+        sh 'docker build .'
       }
     }
 
-    stage('') {
+    stage('error') {
       steps {
         sh 'kubectl applyt -k .'
       }
